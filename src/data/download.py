@@ -168,7 +168,7 @@ class FlightDataDownloader:
         ]
 
         # Generate dates for 2023
-        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="H")
+        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="h")
         sampled_dates = np.random.choice(dates, n_samples)
 
         # Create DataFrame
