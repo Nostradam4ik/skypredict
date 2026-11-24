@@ -6,19 +6,17 @@ Downloads flight data from BTS and weather data from NOAA/OpenWeather.
 Handles caching to avoid re-downloading.
 """
 
-import os
 import logging
-import requests
 import zipfile
-from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Optional, List
 from io import BytesIO
+from pathlib import Path
+from typing import List, Optional
 
 import pandas as pd
-from tqdm import tqdm
+import requests
 
-from ..config import config, RAW_DATA_DIR
+from ..config import RAW_DATA_DIR, config
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +38,7 @@ class FlightDataDownloader:
     KAGGLE_DATASETS = {
         "2019_with_weather": "https://www.kaggle.com/datasets/threnjen/2019-airline-delays-and-cancellations",
         "2018_2022": "https://www.kaggle.com/datasets/robikscube/flight-delay-dataset-20182022",
-        "airlines_delay": "https://www.kaggle.com/datasets/jimschacko/airlines-dataset-to-predict-a-delay"
+        "airlines_delay": "https://www.kaggle.com/datasets/jimschacko/airlines-dataset-to-predict-a-delay",
     }
 
     def __init__(self, output_dir: Optional[Path] = None):
@@ -75,7 +73,7 @@ class FlightDataDownloader:
 
             # Extract CSV from ZIP
             with zipfile.ZipFile(BytesIO(response.content)) as zf:
-                csv_name = [n for n in zf.namelist() if n.endswith('.csv')][0]
+                csv_name = [n for n in zf.namelist() if n.endswith(".csv")][0]
                 with zf.open(csv_name) as csv_file:
                     df = pd.read_csv(csv_file, low_memory=False)
                     df.to_csv(output_path, index=False)
@@ -91,11 +89,7 @@ class FlightDataDownloader:
             return None
 
     def download_multiple_months(
-        self,
-        start_year: int,
-        start_month: int,
-        end_year: int,
-        end_month: int
+        self, start_year: int, start_month: int, end_year: int, end_month: int
     ) -> List[Path]:
         """
         Download BTS data for a range of months.
@@ -150,13 +144,27 @@ class FlightDataDownloader:
         Structure matches BTS On-Time Performance data.
         """
         import numpy as np
+
         np.random.seed(42)
 
         # Airlines and airports
         airlines = ["AA", "DL", "UA", "WN", "AS", "B6", "NK", "F9"]
         airports = [
-            "ATL", "DFW", "DEN", "ORD", "LAX", "CLT", "MCO", "LAS",
-            "PHX", "MIA", "SEA", "IAH", "JFK", "EWR", "SFO"
+            "ATL",
+            "DFW",
+            "DEN",
+            "ORD",
+            "LAX",
+            "CLT",
+            "MCO",
+            "LAS",
+            "PHX",
+            "MIA",
+            "SEA",
+            "IAH",
+            "JFK",
+            "EWR",
+            "SFO",
         ]
 
         # Generate dates for 2023
@@ -164,30 +172,32 @@ class FlightDataDownloader:
         sampled_dates = np.random.choice(dates, n_samples)
 
         # Create DataFrame
-        df = pd.DataFrame({
-            "FL_DATE": pd.to_datetime(sampled_dates).date,
-            "OP_UNIQUE_CARRIER": np.random.choice(airlines, n_samples),
-            "OP_CARRIER_FL_NUM": np.random.randint(1, 9999, n_samples),
-            "ORIGIN": np.random.choice(airports, n_samples),
-            "DEST": np.random.choice(airports, n_samples),
-            "CRS_DEP_TIME": np.random.randint(0, 2359, n_samples),
-            "DEP_TIME": np.random.randint(0, 2359, n_samples),
-            "DEP_DELAY": np.random.normal(5, 30, n_samples),
-            "CRS_ARR_TIME": np.random.randint(0, 2359, n_samples),
-            "ARR_TIME": np.random.randint(0, 2359, n_samples),
-            "ARR_DELAY": np.random.normal(5, 35, n_samples),
-            "CANCELLED": np.random.choice([0, 1], n_samples, p=[0.98, 0.02]),
-            "DIVERTED": np.random.choice([0, 1], n_samples, p=[0.995, 0.005]),
-            "CRS_ELAPSED_TIME": np.random.randint(60, 400, n_samples),
-            "ACTUAL_ELAPSED_TIME": np.random.randint(60, 420, n_samples),
-            "AIR_TIME": np.random.randint(50, 380, n_samples),
-            "DISTANCE": np.random.randint(100, 3000, n_samples),
-            "CARRIER_DELAY": np.abs(np.random.normal(0, 20, n_samples)),
-            "WEATHER_DELAY": np.abs(np.random.normal(0, 15, n_samples)),
-            "NAS_DELAY": np.abs(np.random.normal(0, 10, n_samples)),
-            "SECURITY_DELAY": np.abs(np.random.normal(0, 2, n_samples)),
-            "LATE_AIRCRAFT_DELAY": np.abs(np.random.normal(0, 25, n_samples)),
-        })
+        df = pd.DataFrame(
+            {
+                "FL_DATE": pd.to_datetime(sampled_dates).date,
+                "OP_UNIQUE_CARRIER": np.random.choice(airlines, n_samples),
+                "OP_CARRIER_FL_NUM": np.random.randint(1, 9999, n_samples),
+                "ORIGIN": np.random.choice(airports, n_samples),
+                "DEST": np.random.choice(airports, n_samples),
+                "CRS_DEP_TIME": np.random.randint(0, 2359, n_samples),
+                "DEP_TIME": np.random.randint(0, 2359, n_samples),
+                "DEP_DELAY": np.random.normal(5, 30, n_samples),
+                "CRS_ARR_TIME": np.random.randint(0, 2359, n_samples),
+                "ARR_TIME": np.random.randint(0, 2359, n_samples),
+                "ARR_DELAY": np.random.normal(5, 35, n_samples),
+                "CANCELLED": np.random.choice([0, 1], n_samples, p=[0.98, 0.02]),
+                "DIVERTED": np.random.choice([0, 1], n_samples, p=[0.995, 0.005]),
+                "CRS_ELAPSED_TIME": np.random.randint(60, 400, n_samples),
+                "ACTUAL_ELAPSED_TIME": np.random.randint(60, 420, n_samples),
+                "AIR_TIME": np.random.randint(50, 380, n_samples),
+                "DISTANCE": np.random.randint(100, 3000, n_samples),
+                "CARRIER_DELAY": np.abs(np.random.normal(0, 20, n_samples)),
+                "WEATHER_DELAY": np.abs(np.random.normal(0, 15, n_samples)),
+                "NAS_DELAY": np.abs(np.random.normal(0, 10, n_samples)),
+                "SECURITY_DELAY": np.abs(np.random.normal(0, 2, n_samples)),
+                "LATE_AIRCRAFT_DELAY": np.abs(np.random.normal(0, 25, n_samples)),
+            }
+        )
 
         # Remove same origin-destination
         df = df[df["ORIGIN"] != df["DEST"]]
@@ -251,7 +261,9 @@ class WeatherDataDownloader:
         "PHL": (39.8729, -75.2437),
     }
 
-    def __init__(self, api_key: Optional[str] = None, output_dir: Optional[Path] = None):
+    def __init__(
+        self, api_key: Optional[str] = None, output_dir: Optional[Path] = None
+    ):
         self.api_key = api_key or config.OPENWEATHER_API_KEY
         self.output_dir = output_dir or RAW_DATA_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -280,7 +292,7 @@ class WeatherDataDownloader:
             "lat": coords[0],
             "lon": coords[1],
             "appid": self.api_key,
-            "units": "metric"
+            "units": "metric",
         }
 
         try:
@@ -306,7 +318,9 @@ class WeatherDataDownloader:
             logger.error(f"Failed to get weather for {airport_code}: {e}")
             return None
 
-    def get_weather_forecast(self, airport_code: str, hours: int = 24) -> Optional[List[dict]]:
+    def get_weather_forecast(
+        self, airport_code: str, hours: int = 24
+    ) -> Optional[List[dict]]:
         """
         Get weather forecast for an airport.
 
@@ -332,7 +346,7 @@ class WeatherDataDownloader:
             "lon": coords[1],
             "appid": self.api_key,
             "units": "metric",
-            "cnt": hours // 3  # API returns 3-hour intervals
+            "cnt": hours // 3,  # API returns 3-hour intervals
         }
 
         try:
@@ -342,20 +356,22 @@ class WeatherDataDownloader:
 
             forecasts = []
             for item in data["list"]:
-                forecasts.append({
-                    "airport": airport_code,
-                    "timestamp": item["dt_txt"],
-                    "temp_c": item["main"]["temp"],
-                    "humidity": item["main"]["humidity"],
-                    "pressure_hpa": item["main"]["pressure"],
-                    "wind_speed_ms": item["wind"]["speed"],
-                    "wind_deg": item["wind"].get("deg", 0),
-                    "visibility_m": item.get("visibility", 10000),
-                    "clouds_pct": item["clouds"]["all"],
-                    "weather_main": item["weather"][0]["main"],
-                    "weather_desc": item["weather"][0]["description"],
-                    "pop": item.get("pop", 0),  # Probability of precipitation
-                })
+                forecasts.append(
+                    {
+                        "airport": airport_code,
+                        "timestamp": item["dt_txt"],
+                        "temp_c": item["main"]["temp"],
+                        "humidity": item["main"]["humidity"],
+                        "pressure_hpa": item["main"]["pressure"],
+                        "wind_speed_ms": item["wind"]["speed"],
+                        "wind_deg": item["wind"].get("deg", 0),
+                        "visibility_m": item.get("visibility", 10000),
+                        "clouds_pct": item["clouds"]["all"],
+                        "weather_main": item["weather"][0]["main"],
+                        "weather_desc": item["weather"][0]["description"],
+                        "pop": item.get("pop", 0),  # Probability of precipitation
+                    }
+                )
 
             return forecasts
 
@@ -375,6 +391,7 @@ class WeatherDataDownloader:
             DataFrame with weather data for each airport-date combination
         """
         import numpy as np
+
         np.random.seed(42)
 
         # Get unique airport-date combinations
@@ -385,22 +402,24 @@ class WeatherDataDownloader:
         n = len(airport_dates)
 
         # Generate realistic weather data
-        weather_df = pd.DataFrame({
-            "date": airport_dates["FL_DATE"],
-            "airport": airport_dates["airport"],
-            "temp_c": np.random.normal(15, 15, n).clip(-20, 45),
-            "humidity": np.random.uniform(30, 100, n),
-            "pressure_hpa": np.random.normal(1013, 20, n),
-            "wind_speed_ms": np.abs(np.random.normal(5, 5, n)),
-            "wind_deg": np.random.uniform(0, 360, n),
-            "visibility_m": np.random.choice(
-                [10000, 8000, 5000, 2000, 1000, 500],
-                n,
-                p=[0.6, 0.2, 0.1, 0.05, 0.03, 0.02]
-            ),
-            "clouds_pct": np.random.uniform(0, 100, n),
-            "precipitation_mm": np.random.exponential(2, n).clip(0, 50),
-        })
+        weather_df = pd.DataFrame(
+            {
+                "date": airport_dates["FL_DATE"],
+                "airport": airport_dates["airport"],
+                "temp_c": np.random.normal(15, 15, n).clip(-20, 45),
+                "humidity": np.random.uniform(30, 100, n),
+                "pressure_hpa": np.random.normal(1013, 20, n),
+                "wind_speed_ms": np.abs(np.random.normal(5, 5, n)),
+                "wind_deg": np.random.uniform(0, 360, n),
+                "visibility_m": np.random.choice(
+                    [10000, 8000, 5000, 2000, 1000, 500],
+                    n,
+                    p=[0.6, 0.2, 0.1, 0.05, 0.03, 0.02],
+                ),
+                "clouds_pct": np.random.uniform(0, 100, n),
+                "precipitation_mm": np.random.exponential(2, n).clip(0, 50),
+            }
+        )
 
         # Add weather conditions based on other features
         conditions = []

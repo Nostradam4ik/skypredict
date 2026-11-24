@@ -8,8 +8,8 @@ from typing import Optional
 
 from fastapi import APIRouter
 
-from ..schemas.health import HealthResponse, ModelInfo
 from ... import __version__
+from ..schemas.health import HealthResponse, ModelInfo
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def set_startup_time():
     "/health",
     response_model=HealthResponse,
     summary="Health check",
-    description="Check API health status and model information."
+    description="Check API health status and model information.",
 )
 async def health_check() -> HealthResponse:
     """
@@ -54,7 +54,7 @@ async def health_check() -> HealthResponse:
         classifier_loaded=classifier_loaded,
         regressor_loaded=regressor_loaded,
         model_version="1.0.0",
-        features_count=45 if classifier_loaded else None
+        features_count=45 if classifier_loaded else None,
     )
 
     # Determine overall status
@@ -65,14 +65,12 @@ async def health_check() -> HealthResponse:
         version=__version__,
         timestamp=datetime.utcnow(),
         model_info=model_info,
-        uptime_seconds=uptime
+        uptime_seconds=uptime,
     )
 
 
 @router.get(
-    "/",
-    summary="Root endpoint",
-    description="Welcome message and API information."
+    "/", summary="Root endpoint", description="Welcome message and API information."
 )
 async def root():
     """Root endpoint with API information."""
@@ -81,14 +79,14 @@ async def root():
         "description": "Flight Delay Prediction Service",
         "version": __version__,
         "docs_url": "/docs",
-        "health_url": "/health"
+        "health_url": "/health",
     }
 
 
 @router.get(
     "/ready",
     summary="Readiness check",
-    description="Check if the service is ready to handle requests."
+    description="Check if the service is ready to handle requests.",
 )
 async def readiness_check():
     """
@@ -105,9 +103,7 @@ async def readiness_check():
 
 
 @router.get(
-    "/live",
-    summary="Liveness check",
-    description="Check if the service is alive."
+    "/live", summary="Liveness check", description="Check if the service is alive."
 )
 async def liveness_check():
     """

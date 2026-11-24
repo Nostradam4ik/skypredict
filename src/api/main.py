@@ -14,24 +14,23 @@ Features:
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 
-from .routes import predictions_router, health_router
-from .routes.health import set_startup_time
-from .routes import predictions as predictions_module
-from ..models.predict import FlightDelayPredictor
-from ..config import config
 from .. import __version__
+from ..config import config
+from ..models.predict import FlightDelayPredictor
+from .routes import health_router
+from .routes import predictions as predictions_module
+from .routes import predictions_router
+from .routes.health import set_startup_time
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,9 @@ async def lifespan(app: FastAPI):
         logger.info("Predictor initialized successfully")
     except Exception as e:
         logger.warning(f"Could not initialize predictor: {e}")
-        logger.warning("API will start but predictions will be unavailable until models are trained")
+        logger.warning(
+            "API will start but predictions will be unavailable until models are trained"
+        )
 
     yield
 
@@ -111,7 +112,7 @@ SkyPredict uses machine learning to predict flight delays with high accuracy.
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
-        lifespan=lifespan
+        lifespan=lifespan,
     )
 
     # Configure CORS
@@ -136,8 +137,8 @@ SkyPredict uses machine learning to predict flight delays with high accuracy.
             content={
                 "error": "InternalServerError",
                 "message": "An unexpected error occurred",
-                "details": str(exc) if config.API_DEBUG else None
-            }
+                "details": str(exc) if config.API_DEBUG else None,
+            },
         )
 
     return app
@@ -160,9 +161,7 @@ def custom_openapi():
     )
 
     # Add custom info
-    openapi_schema["info"]["x-logo"] = {
-        "url": "https://example.com/logo.png"
-    }
+    openapi_schema["info"]["x-logo"] = {"url": "https://example.com/logo.png"}
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
@@ -179,5 +178,5 @@ if __name__ == "__main__":
         host=config.API_HOST,
         port=config.API_PORT,
         reload=config.API_DEBUG,
-        log_level="info"
+        log_level="info",
     )

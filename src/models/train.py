@@ -9,29 +9,33 @@ Trains ensemble models for flight delay prediction:
 Models: XGBoost, LightGBM, CatBoost
 """
 
-import logging
-from pathlib import Path
-from typing import Optional, Dict, Tuple, List, Any
-from datetime import datetime
 import json
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
+import joblib
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import joblib
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    roc_auc_score, confusion_matrix, classification_report,
-    mean_absolute_error, mean_squared_error, r2_score
-)
-from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline as ImbPipeline
-
 import xgboost as xgb
-import lightgbm as lgb
 from catboost import CatBoostClassifier, CatBoostRegressor
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 
-from ..config import ml_config, MODELS_DIR
+from ..config import MODELS_DIR, ml_config
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -63,7 +67,7 @@ class ModelTrainer:
         self,
         df: pd.DataFrame,
         target_col: str = "is_delayed",
-        feature_cols: Optional[List[str]] = None
+        feature_cols: Optional[List[str]] = None,
     ) -> Tuple[pd.DataFrame, pd.Series]:
         """
         Prepare features and target for training.
@@ -79,9 +83,17 @@ class ModelTrainer:
         # Auto-select feature columns if not provided
         if feature_cols is None:
             exclude_cols = [
-                "is_delayed", "arrival_delay_minutes", "delay_category",
-                "flight_date", "fl_date", "year", "flight_number",
-                "route", "day_name", "season", "distance_category"
+                "is_delayed",
+                "arrival_delay_minutes",
+                "delay_category",
+                "flight_date",
+                "fl_date",
+                "year",
+                "flight_number",
+                "route",
+                "day_name",
+                "season",
+                "distance_category",
             ]
             feature_cols = [col for col in df.columns if col not in exclude_cols]
 
@@ -107,7 +119,7 @@ class ModelTrainer:
         y: pd.Series,
         model_type: str = "xgboost",
         use_smote: bool = True,
-        test_size: float = 0.2
+        test_size: float = 0.2,
     ) -> Dict[str, Any]:
         """
         Train classification model (is_delayed: yes/no).
@@ -137,11 +149,13 @@ class ModelTrainer:
             logger.info("Applying SMOTE for class imbalance...")
             smote = SMOTE(
                 sampling_strategy=ml_config.SMOTE_SAMPLING_STRATEGY,
-                random_state=ml_config.RANDOM_STATE
+                random_state=ml_config.RANDOM_STATE,
             )
             X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
             logger.info(f"After SMOTE: {len(X_train_resampled)} samples")
-            logger.info(f"Class distribution after SMOTE: {pd.Series(y_train_resampled).value_counts().to_dict()}")
+            logger.info(
+                f"Class distribution after SMOTE: {pd.Series(y_train_resampled).value_counts().to_dict()}"
+            )
         else:
             X_train_resampled, y_train_resampled = X_train, y_train
 
@@ -164,7 +178,7 @@ class ModelTrainer:
 
         self.training_metrics["classifier"] = metrics
 
-        logger.info(f"Classification Results:")
+        logger.info("Classification Results:")
         logger.info(f"  Accuracy: {metrics['accuracy']:.4f}")
         logger.info(f"  Precision: {metrics['precision']:.4f}")
         logger.info(f"  Recall: {metrics['recall']:.4f}")
@@ -178,7 +192,7 @@ class ModelTrainer:
         X: pd.DataFrame,
         y: pd.Series,
         model_type: str = "xgboost",
-        test_size: float = 0.2
+        test_size: float = 0.2,
     ) -> Dict[str, Any]:
         """
         Train regression model (delay_minutes for delayed flights).
@@ -203,7 +217,10 @@ class ModelTrainer:
 
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
-            X_delayed, y_delayed, test_size=test_size, random_state=ml_config.RANDOM_STATE
+            X_delayed,
+            y_delayed,
+            test_size=test_size,
+            random_state=ml_config.RANDOM_STATE,
         )
 
         # Create model
@@ -223,7 +240,7 @@ class ModelTrainer:
 
         self.training_metrics["regressor"] = metrics
 
-        logger.info(f"Regression Results:")
+        logger.info("Regression Results:")
         logger.info(f"  MAE: {metrics['mae']:.2f} minutes")
         logger.info(f"  RMSE: {metrics['rmse']:.2f} minutes")
         logger.info(f"  R2 Score: {metrics['r2']:.4f}")
@@ -246,7 +263,7 @@ class ModelTrainer:
                 random_state=ml_config.RANDOM_STATE,
                 n_jobs=-1,
                 use_label_encoder=False,
-                eval_metric="logloss"
+                eval_metric="logloss",
             )
         elif model_type == "lightgbm":
             return lgb.LGBMClassifier(
@@ -260,7 +277,7 @@ class ModelTrainer:
                 reg_lambda=1,
                 random_state=ml_config.RANDOM_STATE,
                 n_jobs=-1,
-                verbose=-1
+                verbose=-1,
             )
         elif model_type == "catboost":
             return CatBoostClassifier(
@@ -269,7 +286,7 @@ class ModelTrainer:
                 learning_rate=0.1,
                 l2_leaf_reg=3,
                 random_seed=ml_config.RANDOM_STATE,
-                verbose=False
+                verbose=False,
             )
         else:
             raise ValueError(f"Unknown model type: {model_type}")
@@ -288,7 +305,7 @@ class ModelTrainer:
                 reg_alpha=0.1,
                 reg_lambda=1,
                 random_state=ml_config.RANDOM_STATE,
-                n_jobs=-1
+                n_jobs=-1,
             )
         elif model_type == "lightgbm":
             return lgb.LGBMRegressor(
@@ -302,7 +319,7 @@ class ModelTrainer:
                 reg_lambda=1,
                 random_state=ml_config.RANDOM_STATE,
                 n_jobs=-1,
-                verbose=-1
+                verbose=-1,
             )
         elif model_type == "catboost":
             return CatBoostRegressor(
@@ -311,16 +328,13 @@ class ModelTrainer:
                 learning_rate=0.1,
                 l2_leaf_reg=3,
                 random_seed=ml_config.RANDOM_STATE,
-                verbose=False
+                verbose=False,
             )
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
     def _calculate_classification_metrics(
-        self,
-        y_true: pd.Series,
-        y_pred: np.ndarray,
-        y_pred_proba: np.ndarray
+        self, y_true: pd.Series, y_pred: np.ndarray, y_pred_proba: np.ndarray
     ) -> Dict[str, float]:
         """Calculate classification metrics."""
         return {
@@ -329,20 +343,18 @@ class ModelTrainer:
             "recall": recall_score(y_true, y_pred, zero_division=0),
             "f1_score": f1_score(y_true, y_pred, zero_division=0),
             "roc_auc": roc_auc_score(y_true, y_pred_proba),
-            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
         }
 
     def _calculate_regression_metrics(
-        self,
-        y_true: pd.Series,
-        y_pred: np.ndarray
+        self, y_true: pd.Series, y_pred: np.ndarray
     ) -> Dict[str, float]:
         """Calculate regression metrics."""
         return {
             "mae": mean_absolute_error(y_true, y_pred),
             "rmse": np.sqrt(mean_squared_error(y_true, y_pred)),
             "r2": r2_score(y_true, y_pred),
-            "mape": np.mean(np.abs((y_true - y_pred) / (y_true + 1e-8))) * 100
+            "mape": np.mean(np.abs((y_true - y_pred) / (y_true + 1e-8))) * 100,
         }
 
     def cross_validate(
@@ -350,7 +362,7 @@ class ModelTrainer:
         X: pd.DataFrame,
         y: pd.Series,
         n_folds: int = 5,
-        model_type: str = "xgboost"
+        model_type: str = "xgboost",
     ) -> Dict[str, float]:
         """
         Perform cross-validation for robust evaluation.
@@ -367,7 +379,9 @@ class ModelTrainer:
         logger.info(f"Running {n_folds}-fold cross-validation...")
 
         model = self._create_classifier(model_type)
-        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=ml_config.RANDOM_STATE)
+        cv = StratifiedKFold(
+            n_splits=n_folds, shuffle=True, random_state=ml_config.RANDOM_STATE
+        )
 
         # Calculate multiple metrics
         accuracy_scores = cross_val_score(model, X, y, cv=cv, scoring="accuracy")
@@ -380,13 +394,19 @@ class ModelTrainer:
             "cv_f1_mean": f1_scores.mean(),
             "cv_f1_std": f1_scores.std(),
             "cv_roc_auc_mean": roc_auc_scores.mean(),
-            "cv_roc_auc_std": roc_auc_scores.std()
+            "cv_roc_auc_std": roc_auc_scores.std(),
         }
 
-        logger.info(f"CV Results:")
-        logger.info(f"  Accuracy: {metrics['cv_accuracy_mean']:.4f} (+/- {metrics['cv_accuracy_std']:.4f})")
-        logger.info(f"  F1 Score: {metrics['cv_f1_mean']:.4f} (+/- {metrics['cv_f1_std']:.4f})")
-        logger.info(f"  ROC-AUC: {metrics['cv_roc_auc_mean']:.4f} (+/- {metrics['cv_roc_auc_std']:.4f})")
+        logger.info("CV Results:")
+        logger.info(
+            f"  Accuracy: {metrics['cv_accuracy_mean']:.4f} (+/- {metrics['cv_accuracy_std']:.4f})"
+        )
+        logger.info(
+            f"  F1 Score: {metrics['cv_f1_mean']:.4f} (+/- {metrics['cv_f1_std']:.4f})"
+        )
+        logger.info(
+            f"  ROC-AUC: {metrics['cv_roc_auc_mean']:.4f} (+/- {metrics['cv_roc_auc_std']:.4f})"
+        )
 
         return metrics
 
@@ -407,10 +427,9 @@ class ModelTrainer:
 
         importance = model.feature_importances_
 
-        df = pd.DataFrame({
-            "feature": self.feature_names,
-            "importance": importance
-        }).sort_values("importance", ascending=False)
+        df = pd.DataFrame(
+            {"feature": self.feature_names, "importance": importance}
+        ).sort_values("importance", ascending=False)
 
         return df
 
@@ -441,8 +460,10 @@ class ModelTrainer:
             json.dump(self.training_metrics, f, indent=2)
 
         # Save latest version pointers
-        for name, path in [("classifier", clf_path if self.classifier else None),
-                           ("regressor", reg_path if self.regressor else None)]:
+        for name, path in [
+            ("classifier", clf_path if self.classifier else None),
+            ("regressor", reg_path if self.regressor else None),
+        ]:
             if path:
                 latest_path = self.output_dir / f"{prefix}_{name}_latest.joblib"
                 joblib.dump(joblib.load(path), latest_path)
@@ -523,8 +544,8 @@ class EnsembleModel:
 if __name__ == "__main__":
     # Test training pipeline
     from ..data.download import FlightDataDownloader, WeatherDataDownloader
-    from ..data.preprocessing import DataPreprocessor
     from ..data.feature_engineering import FeatureEngineer
+    from ..data.preprocessing import DataPreprocessor
 
     print("Loading and preparing data...")
     flight_dl = FlightDataDownloader()

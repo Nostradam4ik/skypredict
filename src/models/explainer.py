@@ -8,15 +8,12 @@ Essential for understanding why a flight is predicted to be delayed.
 
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Union
-import json
+from typing import Any, Dict, List, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shap
-import matplotlib.pyplot as plt
-
-from ..config import MODELS_DIR
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +35,7 @@ class ModelExplainer:
         self,
         model: Any,
         feature_names: Optional[List[str]] = None,
-        background_data: Optional[pd.DataFrame] = None
+        background_data: Optional[pd.DataFrame] = None,
     ):
         """
         Initialize explainer with a trained model.
@@ -57,11 +54,13 @@ class ModelExplainer:
         """Initialize SHAP explainer based on model type."""
         try:
             # Use TreeExplainer for tree-based models (faster)
-            if hasattr(self.model, 'get_booster') or hasattr(self.model, 'booster_'):
+            if hasattr(self.model, "get_booster") or hasattr(self.model, "booster_"):
                 if background_data is not None:
                     # Sample background data for efficiency
                     sample_size = min(100, len(background_data))
-                    background_sample = background_data.sample(n=sample_size, random_state=42)
+                    background_sample = background_data.sample(
+                        n=sample_size, random_state=42
+                    )
                     self.explainer = shap.TreeExplainer(self.model, background_sample)
                 else:
                     self.explainer = shap.TreeExplainer(self.model)
@@ -70,21 +69,18 @@ class ModelExplainer:
                 # Fall back to KernelExplainer for other models
                 if background_data is not None:
                     sample_size = min(50, len(background_data))
-                    background_sample = background_data.sample(n=sample_size, random_state=42)
+                    background_sample = background_data.sample(
+                        n=sample_size, random_state=42
+                    )
                     self.explainer = shap.KernelExplainer(
-                        self.model.predict_proba,
-                        background_sample
+                        self.model.predict_proba, background_sample
                     )
                     logger.info("Initialized KernelExplainer")
         except Exception as e:
             logger.error(f"Failed to initialize explainer: {e}")
             self.explainer = None
 
-    def explain_single(
-        self,
-        X: pd.DataFrame,
-        max_features: int = 10
-    ) -> Dict[str, Any]:
+    def explain_single(self, X: pd.DataFrame, max_features: int = 10) -> Dict[str, Any]:
         """
         Generate explanation for a single prediction.
 
@@ -108,34 +104,48 @@ class ModelExplainer:
                 shap_values = shap_values[1]
 
             # Get feature values
-            feature_values = X.iloc[0].to_dict() if isinstance(X, pd.DataFrame) else dict(zip(self.feature_names, X[0]))
+            feature_values = (
+                X.iloc[0].to_dict()
+                if isinstance(X, pd.DataFrame)
+                else dict(zip(self.feature_names, X[0]))
+            )
 
             # Create explanation
-            shap_dict = dict(zip(
-                self.feature_names or X.columns.tolist(),
-                shap_values[0] if len(shap_values.shape) > 1 else shap_values
-            ))
+            shap_dict = dict(
+                zip(
+                    self.feature_names or X.columns.tolist(),
+                    shap_values[0] if len(shap_values.shape) > 1 else shap_values,
+                )
+            )
 
             # Sort by absolute impact
             sorted_features = sorted(
-                shap_dict.items(),
-                key=lambda x: abs(x[1]),
-                reverse=True
+                shap_dict.items(), key=lambda x: abs(x[1]), reverse=True
             )[:max_features]
 
             # Format explanation
             explanation = {
-                "base_value": float(self.explainer.expected_value[1]) if isinstance(self.explainer.expected_value, np.ndarray) else float(self.explainer.expected_value),
-                "features": []
+                "base_value": (
+                    float(self.explainer.expected_value[1])
+                    if isinstance(self.explainer.expected_value, np.ndarray)
+                    else float(self.explainer.expected_value)
+                ),
+                "features": [],
             }
 
             for feature_name, shap_value in sorted_features:
-                explanation["features"].append({
-                    "name": feature_name,
-                    "value": float(feature_values.get(feature_name, 0)),
-                    "shap_value": float(shap_value),
-                    "impact": "increases delay risk" if shap_value > 0 else "decreases delay risk"
-                })
+                explanation["features"].append(
+                    {
+                        "name": feature_name,
+                        "value": float(feature_values.get(feature_name, 0)),
+                        "shap_value": float(shap_value),
+                        "impact": (
+                            "increases delay risk"
+                            if shap_value > 0
+                            else "decreases delay risk"
+                        ),
+                    }
+                )
 
             return explanation
 
@@ -144,9 +154,7 @@ class ModelExplainer:
             return {"error": str(e)}
 
     def explain_batch(
-        self,
-        X: pd.DataFrame,
-        max_features: int = 10
+        self, X: pd.DataFrame, max_features: int = 10
     ) -> List[Dict[str, Any]]:
         """
         Generate explanations for multiple predictions.
@@ -187,18 +195,17 @@ class ModelExplainer:
         # Calculate mean absolute SHAP value per feature
         importance = np.abs(shap_values).mean(axis=0)
 
-        df = pd.DataFrame({
-            "feature": self.feature_names or X.columns.tolist(),
-            "importance": importance
-        }).sort_values("importance", ascending=False)
+        df = pd.DataFrame(
+            {
+                "feature": self.feature_names or X.columns.tolist(),
+                "importance": importance,
+            }
+        ).sort_values("importance", ascending=False)
 
         return df
 
     def generate_waterfall_plot(
-        self,
-        X: pd.DataFrame,
-        output_path: Optional[Path] = None,
-        max_display: int = 10
+        self, X: pd.DataFrame, output_path: Optional[Path] = None, max_display: int = 10
     ) -> Optional[str]:
         """
         Generate SHAP waterfall plot for a single prediction.
@@ -223,9 +230,13 @@ class ModelExplainer:
             # Create SHAP Explanation object
             exp = shap.Explanation(
                 values=shap_values[0],
-                base_values=self.explainer.expected_value[1] if isinstance(self.explainer.expected_value, np.ndarray) else self.explainer.expected_value,
+                base_values=(
+                    self.explainer.expected_value[1]
+                    if isinstance(self.explainer.expected_value, np.ndarray)
+                    else self.explainer.expected_value
+                ),
                 data=X.iloc[0].values,
-                feature_names=self.feature_names or X.columns.tolist()
+                feature_names=self.feature_names or X.columns.tolist(),
             )
 
             # Generate plot
@@ -245,10 +256,7 @@ class ModelExplainer:
             return None
 
     def generate_summary_plot(
-        self,
-        X: pd.DataFrame,
-        output_path: Optional[Path] = None,
-        max_display: int = 20
+        self, X: pd.DataFrame, output_path: Optional[Path] = None, max_display: int = 20
     ) -> Optional[str]:
         """
         Generate SHAP summary plot for feature importance.
@@ -276,7 +284,7 @@ class ModelExplainer:
                 X,
                 feature_names=self.feature_names or X.columns.tolist(),
                 max_display=max_display,
-                show=False
+                show=False,
             )
 
             if output_path:
@@ -292,9 +300,7 @@ class ModelExplainer:
             return None
 
     def generate_force_plot_html(
-        self,
-        X: pd.DataFrame,
-        output_path: Optional[Path] = None
+        self, X: pd.DataFrame, output_path: Optional[Path] = None
     ) -> Optional[str]:
         """
         Generate interactive SHAP force plot as HTML.
@@ -317,11 +323,15 @@ class ModelExplainer:
 
             # Generate force plot
             force_plot = shap.force_plot(
-                self.explainer.expected_value[1] if isinstance(self.explainer.expected_value, np.ndarray) else self.explainer.expected_value,
+                (
+                    self.explainer.expected_value[1]
+                    if isinstance(self.explainer.expected_value, np.ndarray)
+                    else self.explainer.expected_value
+                ),
                 shap_values[0],
                 X.iloc[0],
                 feature_names=self.feature_names or X.columns.tolist(),
-                matplotlib=False
+                matplotlib=False,
             )
 
             if output_path:
@@ -364,4 +374,6 @@ class ModelExplainer:
 
 if __name__ == "__main__":
     print("ModelExplainer module loaded successfully")
-    print("To use, initialize with a trained model and call explain_single() or explain_batch()")
+    print(
+        "To use, initialize with a trained model and call explain_single() or explain_batch()"
+    )

@@ -7,15 +7,15 @@ Two-stage prediction: Classification → Regression
 """
 
 import logging
-from pathlib import Path
-from typing import Optional, Dict, Any, Union
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
+import joblib
 import numpy as np
 import pandas as pd
-import joblib
 
-from ..config import ml_config, MODELS_DIR
+from ..config import MODELS_DIR
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -57,10 +57,7 @@ class FlightDelayPredictor:
         else:
             logger.warning(f"Regressor not found at: {reg_path}")
 
-    def predict_single(
-        self,
-        flight_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def predict_single(self, flight_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Predict delay for a single flight.
 
@@ -79,15 +76,16 @@ class FlightDelayPredictor:
         return {
             "is_delayed": bool(result["predictions"][0]),
             "delay_probability": float(result["probabilities"][0]),
-            "estimated_delay_minutes": float(result["estimated_delays"][0]) if result["estimated_delays"][0] else None,
+            "estimated_delay_minutes": (
+                float(result["estimated_delays"][0])
+                if result["estimated_delays"][0]
+                else None
+            ),
             "confidence": float(result["confidence"][0]),
-            "risk_level": result["risk_levels"][0]
+            "risk_level": result["risk_levels"][0],
         }
 
-    def predict_batch(
-        self,
-        df: pd.DataFrame
-    ) -> Dict[str, Any]:
+    def predict_batch(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Predict delays for multiple flights.
 
@@ -116,7 +114,9 @@ class FlightDelayPredictor:
             delayed_mask = is_delayed == 1
             if delayed_mask.any():
                 delayed_features = numeric_df[delayed_mask]
-                estimated_delays[delayed_mask] = self.regressor.predict(delayed_features)
+                estimated_delays[delayed_mask] = self.regressor.predict(
+                    delayed_features
+                )
                 # Clip to reasonable range
                 estimated_delays = np.clip(estimated_delays, 0, 720)
 
@@ -131,13 +131,11 @@ class FlightDelayPredictor:
             "probabilities": delay_proba.tolist(),
             "estimated_delays": estimated_delays.tolist(),
             "confidence": confidence.tolist(),
-            "risk_levels": risk_levels
+            "risk_levels": risk_levels,
         }
 
     def _calculate_risk_levels(
-        self,
-        probabilities: np.ndarray,
-        delays: np.ndarray
+        self, probabilities: np.ndarray, delays: np.ndarray
     ) -> list:
         """
         Calculate risk level categories.
@@ -163,9 +161,7 @@ class FlightDelayPredictor:
         return risk_levels
 
     def predict_with_explanation(
-        self,
-        flight_data: Dict[str, Any],
-        explainer: Optional[Any] = None
+        self, flight_data: Dict[str, Any], explainer: Optional[Any] = None
     ) -> Dict[str, Any]:
         """
         Predict with SHAP explanation.
@@ -200,10 +196,7 @@ class RealTimePredictionService:
         self.cache_ttl_seconds = 300  # 5 minutes
 
     def get_prediction(
-        self,
-        flight_id: str,
-        flight_data: Dict[str, Any],
-        use_cache: bool = True
+        self, flight_id: str, flight_data: Dict[str, Any], use_cache: bool = True
     ) -> Dict[str, Any]:
         """
         Get prediction with caching support.
@@ -219,7 +212,9 @@ class RealTimePredictionService:
         # Check cache
         if use_cache and flight_id in self.prediction_cache:
             cached = self.prediction_cache[flight_id]
-            if (datetime.now() - cached["timestamp"]).total_seconds() < self.cache_ttl_seconds:
+            if (
+                datetime.now() - cached["timestamp"]
+            ).total_seconds() < self.cache_ttl_seconds:
                 return cached["prediction"]
 
         # Get fresh prediction
@@ -228,7 +223,7 @@ class RealTimePredictionService:
         # Update cache
         self.prediction_cache[flight_id] = {
             "prediction": prediction,
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         return prediction
@@ -257,13 +252,13 @@ if __name__ == "__main__":
         "origin_delay_rate": 0.18,
         "dest_delay_rate": 0.20,
         "weather_severity_score": 2,
-        "origin_congestion": 0.7
+        "origin_congestion": 0.7,
     }
 
     try:
         predictor = FlightDelayPredictor()
         result = predictor.predict_single(sample_flight)
-        print(f"\nPrediction Result:")
+        print("\nPrediction Result:")
         print(f"  Is Delayed: {result['is_delayed']}")
         print(f"  Probability: {result['delay_probability']:.2%}")
         print(f"  Estimated Delay: {result['estimated_delay_minutes']} minutes")

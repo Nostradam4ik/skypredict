@@ -2,9 +2,10 @@
 API Tests for SkyPredict
 """
 
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
-from datetime import date
 
 
 class TestHealthEndpoints:
@@ -66,10 +67,7 @@ class TestPredictionEndpoints:
     def test_single_prediction_validation(self, client):
         """Test input validation for single prediction."""
         # Missing required fields
-        response = client.post(
-            "/api/v1/predictions/single",
-            json={"airline": "AA"}
-        )
+        response = client.post("/api/v1/predictions/single", json={"airline": "AA"})
         assert response.status_code == 422  # Validation error
 
     def test_single_prediction_invalid_airport(self, client):
@@ -81,8 +79,8 @@ class TestPredictionEndpoints:
                 "origin_airport": "XX",  # Invalid
                 "dest_airport": "LAX",
                 "flight_date": "2024-07-15",
-                "scheduled_departure_hour": 14
-            }
+                "scheduled_departure_hour": 14,
+            },
         )
         # Should still process (model handles unknown airports)
         # or return validation error depending on implementation
@@ -94,10 +92,7 @@ class TestBatchPrediction:
 
     def test_batch_empty_list(self, client):
         """Test batch prediction with empty list."""
-        response = client.post(
-            "/api/v1/predictions/batch",
-            json={"flights": []}
-        )
+        response = client.post("/api/v1/predictions/batch", json={"flights": []})
         # Empty list should be rejected by validation
         assert response.status_code == 422
 
@@ -109,14 +104,11 @@ class TestBatchPrediction:
                 "origin_airport": "JFK",
                 "dest_airport": "LAX",
                 "flight_date": "2024-07-15",
-                "scheduled_departure_hour": 14
+                "scheduled_departure_hour": 14,
             }
         ] * 101  # Exceeds max of 100
 
-        response = client.post(
-            "/api/v1/predictions/batch",
-            json={"flights": flights}
-        )
+        response = client.post("/api/v1/predictions/batch", json={"flights": flights})
         assert response.status_code == 422  # Validation error
 
 
@@ -125,6 +117,7 @@ class TestBatchPrediction:
 def client():
     """Create test client."""
     from src.api.main import app
+
     return TestClient(app)
 
 
@@ -140,5 +133,5 @@ def sample_flight():
         "scheduled_departure_hour": 14,
         "scheduled_departure_minute": 30,
         "distance": 2475,
-        "scheduled_duration": 330
+        "scheduled_duration": 330,
     }

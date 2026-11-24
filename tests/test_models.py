@@ -2,9 +2,9 @@
 Model Tests for SkyPredict
 """
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 
 
 class TestDataPreprocessing:
@@ -23,8 +23,8 @@ class TestDataPreprocessing:
 
     def test_preprocessor_removes_cancelled(self):
         """Test that preprocessor removes cancelled flights."""
-        from src.data.preprocessing import DataPreprocessor
         from src.data.download import FlightDataDownloader
+        from src.data.preprocessing import DataPreprocessor
 
         downloader = FlightDataDownloader()
         df = downloader._create_sample_dataset(n_samples=1000)
@@ -37,8 +37,8 @@ class TestDataPreprocessing:
 
     def test_preprocessor_creates_targets(self):
         """Test that preprocessor creates target variables."""
-        from src.data.preprocessing import DataPreprocessor
         from src.data.download import FlightDataDownloader
+        from src.data.preprocessing import DataPreprocessor
 
         downloader = FlightDataDownloader()
         df = downloader._create_sample_dataset(n_samples=1000)
@@ -59,11 +59,13 @@ class TestFeatureEngineering:
         from src.data.feature_engineering import FeatureEngineer
 
         # Create sample data
-        df = pd.DataFrame({
-            "flight_date": pd.date_range("2024-01-01", periods=100),
-            "scheduled_departure": [1400] * 100,
-            "is_delayed": np.random.randint(0, 2, 100)
-        })
+        df = pd.DataFrame(
+            {
+                "flight_date": pd.date_range("2024-01-01", periods=100),
+                "scheduled_departure": [1400] * 100,
+                "is_delayed": np.random.randint(0, 2, 100),
+            }
+        )
         df["month"] = df["flight_date"].dt.month
         df["day_of_week"] = df["flight_date"].dt.dayofweek
         df["day_of_month"] = df["flight_date"].dt.day
@@ -76,8 +78,8 @@ class TestFeatureEngineering:
 
     def test_no_data_leakage(self):
         """Test that leakage features are removed."""
-        from src.data.preprocessing import DataPreprocessor, DataQualityChecker
         from src.data.download import FlightDataDownloader
+        from src.data.preprocessing import DataPreprocessor, DataQualityChecker
 
         downloader = FlightDataDownloader()
         df = downloader._create_sample_dataset(n_samples=1000)
@@ -100,11 +102,13 @@ class TestModelTraining:
         from src.models.train import ModelTrainer
 
         # Create sample data
-        df = pd.DataFrame({
-            "feature1": np.random.randn(100),
-            "feature2": np.random.randn(100),
-            "is_delayed": np.random.randint(0, 2, 100)
-        })
+        df = pd.DataFrame(
+            {
+                "feature1": np.random.randn(100),
+                "feature2": np.random.randn(100),
+                "is_delayed": np.random.randint(0, 2, 100),
+            }
+        )
 
         trainer = ModelTrainer()
         X, y = trainer.prepare_data(df, target_col="is_delayed")
@@ -158,15 +162,17 @@ class TestPrediction:
 def sample_features():
     """Sample feature DataFrame for testing."""
     np.random.seed(42)
-    return pd.DataFrame({
-        "month": np.random.randint(1, 13, 1000),
-        "day_of_week": np.random.randint(0, 7, 1000),
-        "hour": np.random.randint(0, 24, 1000),
-        "distance": np.random.uniform(100, 3000, 1000),
-        "origin_is_hub": np.random.randint(0, 2, 1000),
-        "dest_is_hub": np.random.randint(0, 2, 1000),
-        "weather_severity_score": np.random.randint(0, 6, 1000),
-        "airline_delay_rate": np.random.uniform(0.1, 0.3, 1000),
-        "is_delayed": np.random.randint(0, 2, 1000),
-        "arrival_delay_minutes": np.random.uniform(-30, 120, 1000)
-    })
+    return pd.DataFrame(
+        {
+            "month": np.random.randint(1, 13, 1000),
+            "day_of_week": np.random.randint(0, 7, 1000),
+            "hour": np.random.randint(0, 24, 1000),
+            "distance": np.random.uniform(100, 3000, 1000),
+            "origin_is_hub": np.random.randint(0, 2, 1000),
+            "dest_is_hub": np.random.randint(0, 2, 1000),
+            "weather_severity_score": np.random.randint(0, 6, 1000),
+            "airline_delay_rate": np.random.uniform(0.1, 0.3, 1000),
+            "is_delayed": np.random.randint(0, 2, 1000),
+            "arrival_delay_minutes": np.random.uniform(-30, 120, 1000),
+        }
+    )

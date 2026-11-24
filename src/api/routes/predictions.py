@@ -4,23 +4,21 @@ Prediction endpoints for SkyPredict API
 
 import logging
 from typing import Optional
-from datetime import datetime
+
 import numpy as np
-import pandas as pd
+from fastapi import APIRouter, HTTPException, Query
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-
+from ...data.feature_engineering import FeatureEngineer
+from ...models.predict import FlightDelayPredictor
 from ..schemas.flight import (
-    FlightInput,
-    FlightPredictionResponse,
     BatchPredictionRequest,
     BatchPredictionResponse,
-    PredictionExplanation,
     FeatureExplanation,
-    RiskLevel
+    FlightInput,
+    FlightPredictionResponse,
+    PredictionExplanation,
+    RiskLevel,
 )
-from ...models.predict import FlightDelayPredictor
-from ...data.feature_engineering import FeatureEngineer
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -34,11 +32,11 @@ feature_engineer: Optional[FeatureEngineer] = None
 
 
 def get_predictor() -> FlightDelayPredictor:
-    """Dependency to get predictor instance."""
+    """Return the predictor, or raise 503 if models are not loaded."""
     if predictor is None:
         raise HTTPException(
             status_code=503,
-            detail="Prediction service not initialized. Models may not be trained yet."
+            detail="Prediction service not initialized. Models may not be trained yet.",
         )
     return predictor
 
@@ -103,15 +101,24 @@ def flight_input_to_features(flight: FlightInput) -> dict:
     origin_has_precipitation = 1 if origin_precip > 0 else 0
     dest_has_precipitation = 1 if dest_precip > 0 else 0
     weather_severity_score = (
-        origin_low_visibility + dest_low_visibility +
-        origin_high_wind + dest_high_wind +
-        origin_has_precipitation + dest_has_precipitation
+        origin_low_visibility
+        + dest_low_visibility
+        + origin_high_wind
+        + dest_high_wind
+        + origin_has_precipitation
+        + dest_has_precipitation
     )
 
     # Historical rates (defaults based on industry averages)
     airline_delay_rates = {
-        "AA": 0.20, "DL": 0.15, "UA": 0.22, "WN": 0.18,
-        "AS": 0.14, "B6": 0.24, "NK": 0.28, "F9": 0.26
+        "AA": 0.20,
+        "DL": 0.15,
+        "UA": 0.22,
+        "WN": 0.18,
+        "AS": 0.14,
+        "B6": 0.24,
+        "NK": 0.28,
+        "F9": 0.26,
     }
     airline_delay_rate = airline_delay_rates.get(flight.airline, 0.20)
 
@@ -132,7 +139,6 @@ def flight_input_to_features(flight: FlightInput) -> dict:
         "dow_cos": dow_cos,
         "month_sin": month_sin,
         "month_cos": month_cos,
-
         # Flight
         "distance": distance,
         "log_distance": log_distance,
@@ -140,7 +146,6 @@ def flight_input_to_features(flight: FlightInput) -> dict:
         "log_duration": log_duration,
         "origin_is_hub": origin_is_hub,
         "dest_is_hub": dest_is_hub,
-
         # Weather
         "origin_temp_c": origin_temp,
         "origin_wind_speed_ms": origin_wind,
@@ -157,13 +162,11 @@ def flight_input_to_features(flight: FlightInput) -> dict:
         "origin_has_precipitation": origin_has_precipitation,
         "dest_has_precipitation": dest_has_precipitation,
         "weather_severity_score": weather_severity_score,
-
         # Historical
         "airline_delay_rate": airline_delay_rate,
         "origin_delay_rate": 0.18,  # Default
         "dest_delay_rate": 0.18,
         "hour_delay_rate": 0.15 + (0.05 * is_peak_hour),
-
         # Congestion (default estimate)
         "origin_congestion": 0.5 + (0.2 * origin_is_hub) + (0.1 * is_peak_hour),
     }
@@ -175,12 +178,11 @@ def flight_input_to_features(flight: FlightInput) -> dict:
     "/single",
     response_model=FlightPredictionResponse,
     summary="Predict delay for a single flight",
-    description="Returns delay prediction with probability, estimated delay time, and risk level."
+    description="Returns delay prediction with probability, estimated delay time, and risk level.",
 )
 async def predict_single_flight(
     flight: FlightInput,
     include_explanation: bool = Query(False, description="Include SHAP explanation"),
-    pred: FlightDelayPredictor = Depends(get_predictor)
 ) -> FlightPredictionResponse:
     """
     Predict whether a flight will be delayed.
@@ -192,6 +194,9 @@ async def predict_single_flight(
     - risk_level: LOW, MEDIUM, HIGH, or SEVERE
     - explanation: SHAP-based explanation (optional)
     """
+    # Resolved here rather than as a dependency so that request validation (422)
+    # is reported before the service-availability check (503).
+    pred = get_predictor()
     try:
         # Convert input to features
         features = flight_input_to_features(flight)
@@ -203,14 +208,18 @@ async def predict_single_flight(
         response = FlightPredictionResponse(
             is_delayed=result["is_delayed"],
             delay_probability=round(result["delay_probability"], 4),
-            estimated_delay_minutes=round(result["estimated_delay_minutes"], 1) if result["estimated_delay_minutes"] else None,
+            estimated_delay_minutes=(
+                round(result["estimated_delay_minutes"], 1)
+                if result["estimated_delay_minutes"]
+                else None
+            ),
             confidence=round(result["confidence"], 4),
             risk_level=RiskLevel(result["risk_level"]),
             airline=flight.airline,
             origin_airport=flight.origin_airport,
             dest_airport=flight.dest_airport,
             flight_date=str(flight.flight_date),
-            scheduled_departure=f"{flight.scheduled_departure_hour:02d}:{flight.scheduled_departure_minute:02d}"
+            scheduled_departure=f"{flight.scheduled_departure_hour:02d}:{flight.scheduled_departure_minute:02d}",
         )
 
         # Add explanation if requested
@@ -218,9 +227,7 @@ async def predict_single_flight(
             exp = result["explanation"]
             response.explanation = PredictionExplanation(
                 base_value=exp["base_value"],
-                features=[
-                    FeatureExplanation(**f) for f in exp["features"]
-                ]
+                features=[FeatureExplanation(**f) for f in exp["features"]],
             )
 
         return response
@@ -234,17 +241,17 @@ async def predict_single_flight(
     "/batch",
     response_model=BatchPredictionResponse,
     summary="Predict delays for multiple flights",
-    description="Batch prediction for up to 100 flights at once."
+    description="Batch prediction for up to 100 flights at once.",
 )
 async def predict_batch_flights(
     request: BatchPredictionRequest,
-    pred: FlightDelayPredictor = Depends(get_predictor)
 ) -> BatchPredictionResponse:
     """
     Predict delays for multiple flights.
 
     Maximum 100 flights per request.
     """
+    pred = get_predictor()
     try:
         predictions = []
 
@@ -252,18 +259,24 @@ async def predict_batch_flights(
             features = flight_input_to_features(flight)
             result = pred.predict_single(features)
 
-            predictions.append(FlightPredictionResponse(
-                is_delayed=result["is_delayed"],
-                delay_probability=round(result["delay_probability"], 4),
-                estimated_delay_minutes=round(result["estimated_delay_minutes"], 1) if result["estimated_delay_minutes"] else None,
-                confidence=round(result["confidence"], 4),
-                risk_level=RiskLevel(result["risk_level"]),
-                airline=flight.airline,
-                origin_airport=flight.origin_airport,
-                dest_airport=flight.dest_airport,
-                flight_date=str(flight.flight_date),
-                scheduled_departure=f"{flight.scheduled_departure_hour:02d}:{flight.scheduled_departure_minute:02d}"
-            ))
+            predictions.append(
+                FlightPredictionResponse(
+                    is_delayed=result["is_delayed"],
+                    delay_probability=round(result["delay_probability"], 4),
+                    estimated_delay_minutes=(
+                        round(result["estimated_delay_minutes"], 1)
+                        if result["estimated_delay_minutes"]
+                        else None
+                    ),
+                    confidence=round(result["confidence"], 4),
+                    risk_level=RiskLevel(result["risk_level"]),
+                    airline=flight.airline,
+                    origin_airport=flight.origin_airport,
+                    dest_airport=flight.dest_airport,
+                    flight_date=str(flight.flight_date),
+                    scheduled_departure=f"{flight.scheduled_departure_hour:02d}:{flight.scheduled_departure_minute:02d}",
+                )
+            )
 
         # Calculate summary statistics
         delayed_count = sum(1 for p in predictions if p.is_delayed)
@@ -274,37 +287,41 @@ async def predict_batch_flights(
             total_flights=len(predictions),
             delayed_count=delayed_count,
             on_time_count=len(predictions) - delayed_count,
-            average_delay_probability=round(avg_prob, 4)
+            average_delay_probability=round(avg_prob, 4),
         )
 
     except Exception as e:
         logger.error(f"Batch prediction error: {e}")
-        raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Batch prediction failed: {str(e)}"
+        )
 
 
 @router.get(
     "/airports",
     summary="Get supported airports",
-    description="Returns list of airports supported by the model."
+    description="Returns list of airports supported by the model.",
 )
 async def get_supported_airports():
     """Get list of supported airports."""
     from ...config import airport_config
+
     return {
         "airports": airport_config.TOP_AIRPORTS,
-        "count": len(airport_config.TOP_AIRPORTS)
+        "count": len(airport_config.TOP_AIRPORTS),
     }
 
 
 @router.get(
     "/airlines",
     summary="Get supported airlines",
-    description="Returns list of airlines supported by the model."
+    description="Returns list of airlines supported by the model.",
 )
 async def get_supported_airlines():
     """Get list of supported airlines."""
     from ...config import airport_config
+
     return {
         "airlines": airport_config.MAJOR_AIRLINES,
-        "count": len(airport_config.MAJOR_AIRLINES)
+        "count": len(airport_config.MAJOR_AIRLINES),
     }

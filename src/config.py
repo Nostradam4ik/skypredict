@@ -4,6 +4,7 @@ Configuration module for SkyPredict
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -76,37 +77,67 @@ class MLConfig:
 
     # Feature groups (available 2h before flight)
     TEMPORAL_FEATURES = [
-        "month", "day_of_week", "day_of_month", "hour",
-        "is_weekend", "is_holiday", "is_peak_hour", "season"
+        "month",
+        "day_of_week",
+        "day_of_month",
+        "hour",
+        "is_weekend",
+        "is_holiday",
+        "is_peak_hour",
+        "season",
     ]
 
     FLIGHT_FEATURES = [
-        "airline", "origin_airport", "dest_airport",
-        "distance", "scheduled_duration", "flight_number_prefix"
+        "airline",
+        "origin_airport",
+        "dest_airport",
+        "distance",
+        "scheduled_duration",
+        "flight_number_prefix",
     ]
 
     WEATHER_FEATURES = [
-        "origin_temp", "origin_wind_speed", "origin_visibility",
-        "origin_precipitation", "origin_humidity",
-        "dest_temp", "dest_wind_speed", "dest_visibility",
-        "dest_precipitation", "dest_humidity"
+        "origin_temp",
+        "origin_wind_speed",
+        "origin_visibility",
+        "origin_precipitation",
+        "origin_humidity",
+        "dest_temp",
+        "dest_wind_speed",
+        "dest_visibility",
+        "dest_precipitation",
+        "dest_humidity",
     ]
 
     HISTORICAL_FEATURES = [
-        "airline_delay_rate", "origin_delay_rate", "dest_delay_rate",
-        "route_delay_rate", "airline_avg_delay", "origin_avg_delay"
+        "airline_delay_rate",
+        "origin_delay_rate",
+        "dest_delay_rate",
+        "route_delay_rate",
+        "airline_avg_delay",
+        "origin_avg_delay",
     ]
 
     CONGESTION_FEATURES = [
-        "origin_departures_hour", "origin_arrivals_hour",
-        "dest_departures_hour", "dest_arrivals_hour"
+        "origin_departures_hour",
+        "origin_arrivals_hour",
+        "dest_departures_hour",
+        "dest_arrivals_hour",
     ]
 
     # Features to EXCLUDE (data leakage - not available before flight)
     LEAKAGE_FEATURES = [
-        "dep_delay", "departure_delay", "taxi_out", "taxi_in",
-        "wheels_off", "wheels_on", "air_time", "actual_elapsed_time",
-        "arrival_time", "diverted", "cancelled"
+        "dep_delay",
+        "departure_delay",
+        "taxi_out",
+        "taxi_in",
+        "wheels_off",
+        "wheels_on",
+        "air_time",
+        "actual_elapsed_time",
+        "arrival_time",
+        "diverted",
+        "cancelled",
     ]
 
 
@@ -115,10 +146,26 @@ class AirportConfig:
 
     # Top US airports by traffic (for initial focus)
     TOP_AIRPORTS = [
-        "ATL", "DFW", "DEN", "ORD", "LAX",
-        "CLT", "MCO", "LAS", "PHX", "MIA",
-        "SEA", "IAH", "JFK", "EWR", "SFO",
-        "MSP", "BOS", "DTW", "FLL", "PHL"
+        "ATL",
+        "DFW",
+        "DEN",
+        "ORD",
+        "LAX",
+        "CLT",
+        "MCO",
+        "LAS",
+        "PHX",
+        "MIA",
+        "SEA",
+        "IAH",
+        "JFK",
+        "EWR",
+        "SFO",
+        "MSP",
+        "BOS",
+        "DTW",
+        "FLL",
+        "PHL",
     ]
 
     # Major airlines

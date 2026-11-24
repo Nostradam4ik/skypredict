@@ -3,12 +3,12 @@ Pydantic schemas for API request/response validation
 """
 
 from .flight import (
-    FlightInput,
-    FlightPredictionResponse,
     BatchPredictionRequest,
     BatchPredictionResponse,
     FeatureExplanation,
-    PredictionExplanation
+    FlightInput,
+    FlightPredictionResponse,
+    PredictionExplanation,
 )
 from .health import HealthResponse, ModelInfo
 
@@ -20,5 +20,5 @@ __all__ = [
     "FeatureExplanation",
     "PredictionExplanation",
     "HealthResponse",
-    "ModelInfo"
+    "ModelInfo",
 ]

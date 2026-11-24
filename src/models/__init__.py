@@ -5,13 +5,8 @@ Models module for SkyPredict
 - explainer: SHAP explainability
 """
 
-from .train import ModelTrainer, EnsembleModel
-from .predict import FlightDelayPredictor
 from .explainer import ModelExplainer
+from .predict import FlightDelayPredictor
+from .train import EnsembleModel, ModelTrainer
 
-__all__ = [
-    "ModelTrainer",
-    "EnsembleModel",
-    "FlightDelayPredictor",
-    "ModelExplainer"
-]
+__all__ = ["ModelTrainer", "EnsembleModel", "FlightDelayPredictor", "ModelExplainer"]

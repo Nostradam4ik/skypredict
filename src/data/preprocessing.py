@@ -8,13 +8,12 @@ Handles missing values, outliers, and data quality issues.
 
 import logging
 from pathlib import Path
-from typing import Optional, Tuple, List
-from datetime import datetime
+from typing import List, Optional
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from ..config import ml_config, airport_config, PROCESSED_DATA_DIR
+from ..config import PROCESSED_DATA_DIR, airport_config, ml_config
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +42,7 @@ class DataPreprocessor:
         df: pd.DataFrame,
         remove_cancelled: bool = True,
         filter_airports: bool = True,
-        filter_airlines: bool = True
+        filter_airlines: bool = True,
     ) -> pd.DataFrame:
         """
         Main preprocessing pipeline for flight data.
@@ -114,7 +113,9 @@ class DataPreprocessor:
             "dest": "dest_airport",
         }
 
-        df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
+        df = df.rename(
+            columns={k: v for k, v in column_mapping.items() if k in df.columns}
+        )
 
         return df
 
@@ -129,7 +130,9 @@ class DataPreprocessor:
             df = df[df["diverted"] == 0]
 
         removed = initial_count - len(df)
-        logger.info(f"Removed {removed} cancelled/diverted flights ({removed/initial_count*100:.2f}%)")
+        logger.info(
+            f"Removed {removed} cancelled/diverted flights ({removed/initial_count*100:.2f}%)"
+        )
 
         return df
 
@@ -141,12 +144,14 @@ class DataPreprocessor:
         dest_col = "dest_airport" if "dest_airport" in df.columns else "dest"
 
         df = df[
-            (df[origin_col].isin(airport_config.TOP_AIRPORTS)) &
-            (df[dest_col].isin(airport_config.TOP_AIRPORTS))
+            (df[origin_col].isin(airport_config.TOP_AIRPORTS))
+            & (df[dest_col].isin(airport_config.TOP_AIRPORTS))
         ]
 
         removed = initial_count - len(df)
-        logger.info(f"Filtered to major airports. Removed {removed} flights ({removed/initial_count*100:.2f}%)")
+        logger.info(
+            f"Filtered to major airports. Removed {removed} flights ({removed/initial_count*100:.2f}%)"
+        )
 
         return df
 
@@ -159,7 +164,9 @@ class DataPreprocessor:
         if airline_col in df.columns:
             df = df[df[airline_col].isin(airport_config.MAJOR_AIRLINES)]
             removed = initial_count - len(df)
-            logger.info(f"Filtered to major airlines. Removed {removed} flights ({removed/initial_count*100:.2f}%)")
+            logger.info(
+                f"Filtered to major airlines. Removed {removed} flights ({removed/initial_count*100:.2f}%)"
+            )
 
         return df
 
@@ -167,7 +174,6 @@ class DataPreprocessor:
         """Handle missing values appropriately."""
         # Log missing value counts
         missing = df.isnull().sum()
-        missing_pct = (missing / len(df) * 100).round(2)
         logger.info(f"Missing values:\n{missing[missing > 0]}")
 
         # Drop rows with missing target (arrival_delay)
@@ -204,7 +210,9 @@ class DataPreprocessor:
             df = df[(df[delay_col] >= -360) & (df[delay_col] <= 720)]
 
             removed = initial_count - len(df)
-            logger.info(f"Removed {removed} outliers ({removed/initial_count*100:.2f}%)")
+            logger.info(
+                f"Removed {removed} outliers ({removed/initial_count*100:.2f}%)"
+            )
 
         return df
 
@@ -224,12 +232,20 @@ class DataPreprocessor:
             df["delay_category"] = pd.cut(
                 df[delay_col],
                 bins=[-np.inf, -15, 15, 60, 120, np.inf],
-                labels=["early", "on_time", "minor_delay", "moderate_delay", "severe_delay"]
+                labels=[
+                    "early",
+                    "on_time",
+                    "minor_delay",
+                    "moderate_delay",
+                    "severe_delay",
+                ],
             )
 
             # Log class distribution
             delay_pct = df["is_delayed"].mean() * 100
-            logger.info(f"Delay distribution: {delay_pct:.2f}% delayed, {100-delay_pct:.2f}% on-time")
+            logger.info(
+                f"Delay distribution: {delay_pct:.2f}% delayed, {100-delay_pct:.2f}% on-time"
+            )
 
         return df
 
@@ -244,24 +260,38 @@ class DataPreprocessor:
         """
         leakage_cols = [
             # Post-departure features
-            "departure_delay", "dep_delay", "taxi_out", "taxi_in",
-            "wheels_off", "wheels_on", "air_time",
-            "actual_departure", "dep_time", "actual_arrival", "arr_time",
-            "actual_duration", "actual_elapsed_time",
-
+            "departure_delay",
+            "dep_delay",
+            "taxi_out",
+            "taxi_in",
+            "wheels_off",
+            "wheels_on",
+            "air_time",
+            "actual_departure",
+            "dep_time",
+            "actual_arrival",
+            "arr_time",
+            "actual_duration",
+            "actual_elapsed_time",
             # Delay breakdown (only known after arrival)
-            "carrier_delay", "weather_delay", "nas_delay",
-            "security_delay", "late_aircraft_delay",
-
+            "carrier_delay",
+            "weather_delay",
+            "nas_delay",
+            "security_delay",
+            "late_aircraft_delay",
             # Cancellation/diversion flags (we already filtered these)
-            "cancelled", "cancellation_code", "diverted",
+            "cancelled",
+            "cancellation_code",
+            "diverted",
         ]
 
         # Keep track of original arrival_delay for regression target
         cols_to_drop = [col for col in leakage_cols if col in df.columns]
 
         if cols_to_drop:
-            logger.info(f"Removing {len(cols_to_drop)} leakage features: {cols_to_drop}")
+            logger.info(
+                f"Removing {len(cols_to_drop)} leakage features: {cols_to_drop}"
+            )
             df = df.drop(columns=cols_to_drop, errors="ignore")
 
         return df
@@ -280,7 +310,11 @@ class DataPreprocessor:
             df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
 
         # Parse scheduled departure time
-        dep_time_col = "scheduled_departure" if "scheduled_departure" in df.columns else "crs_dep_time"
+        dep_time_col = (
+            "scheduled_departure"
+            if "scheduled_departure" in df.columns
+            else "crs_dep_time"
+        )
         if dep_time_col in df.columns:
             df["hour"] = (df[dep_time_col] // 100).astype(int).clip(0, 23)
             df["minute"] = (df[dep_time_col] % 100).astype(int).clip(0, 59)
@@ -288,9 +322,7 @@ class DataPreprocessor:
         return df
 
     def merge_weather_data(
-        self,
-        flight_df: pd.DataFrame,
-        weather_df: pd.DataFrame
+        self, flight_df: pd.DataFrame, weather_df: pd.DataFrame
     ) -> pd.DataFrame:
         """
         Merge weather data with flight data.
@@ -307,7 +339,9 @@ class DataPreprocessor:
         logger.info("Merging weather data...")
 
         date_col = "flight_date" if "flight_date" in flight_df.columns else "fl_date"
-        origin_col = "origin_airport" if "origin_airport" in flight_df.columns else "origin"
+        origin_col = (
+            "origin_airport" if "origin_airport" in flight_df.columns else "origin"
+        )
         dest_col = "dest_airport" if "dest_airport" in flight_df.columns else "dest"
 
         # Ensure date columns are compatible
@@ -316,30 +350,28 @@ class DataPreprocessor:
 
         # Merge origin weather
         origin_weather = weather_df.add_prefix("origin_")
-        origin_weather = origin_weather.rename(columns={
-            "origin_date": "date",
-            "origin_airport": "airport"
-        })
+        origin_weather = origin_weather.rename(
+            columns={"origin_date": "date", "origin_airport": "airport"}
+        )
 
         flight_df = flight_df.merge(
             origin_weather,
             left_on=[date_col, origin_col],
             right_on=["date", "airport"],
-            how="left"
+            how="left",
         ).drop(columns=["date", "airport"], errors="ignore")
 
         # Merge destination weather
         dest_weather = weather_df.add_prefix("dest_")
-        dest_weather = dest_weather.rename(columns={
-            "dest_date": "date",
-            "dest_airport": "airport"
-        })
+        dest_weather = dest_weather.rename(
+            columns={"dest_date": "date", "dest_airport": "airport"}
+        )
 
         flight_df = flight_df.merge(
             dest_weather,
             left_on=[date_col, dest_col],
             right_on=["date", "airport"],
-            how="left"
+            how="left",
         ).drop(columns=["date", "airport"], errors="ignore")
 
         logger.info(f"Weather merge complete. Shape: {flight_df.shape}")
@@ -347,9 +379,7 @@ class DataPreprocessor:
         return flight_df
 
     def save_processed_data(
-        self,
-        df: pd.DataFrame,
-        filename: str = "flights_processed.parquet"
+        self, df: pd.DataFrame, filename: str = "flights_processed.parquet"
     ) -> Path:
         """Save processed data to parquet format."""
         output_path = self.output_dir / filename
@@ -357,7 +387,9 @@ class DataPreprocessor:
         logger.info(f"Saved processed data to: {output_path}")
         return output_path
 
-    def load_processed_data(self, filename: str = "flights_processed.parquet") -> pd.DataFrame:
+    def load_processed_data(
+        self, filename: str = "flights_processed.parquet"
+    ) -> pd.DataFrame:
         """Load processed data from parquet format."""
         input_path = self.output_dir / filename
         if input_path.exists():
@@ -381,7 +413,9 @@ class DataQualityChecker:
             "columns": list(self.df.columns),
             "dtypes": self.df.dtypes.astype(str).to_dict(),
             "missing_values": self.df.isnull().sum().to_dict(),
-            "missing_pct": (self.df.isnull().sum() / len(self.df) * 100).round(2).to_dict(),
+            "missing_pct": (self.df.isnull().sum() / len(self.df) * 100)
+            .round(2)
+            .to_dict(),
             "duplicates": self.df.duplicated().sum(),
             "memory_mb": self.df.memory_usage(deep=True).sum() / 1024**2,
         }
@@ -392,7 +426,9 @@ class DataQualityChecker:
 
         # Categorical column statistics
         categorical_cols = self.df.select_dtypes(include=["object", "category"]).columns
-        report["categorical_unique"] = {col: self.df[col].nunique() for col in categorical_cols}
+        report["categorical_unique"] = {
+            col: self.df[col].nunique() for col in categorical_cols
+        }
 
         return report
 
@@ -400,7 +436,9 @@ class DataQualityChecker:
         """Check if any leakage features are still present."""
         leakage_found = []
         for col in ml_config.LEAKAGE_FEATURES:
-            if col in self.df.columns or col.lower() in [c.lower() for c in self.df.columns]:
+            if col in self.df.columns or col.lower() in [
+                c.lower() for c in self.df.columns
+            ]:
                 leakage_found.append(col)
         return leakage_found
 
@@ -411,7 +449,9 @@ class DataQualityChecker:
             return {
                 "on_time": int(counts.get(0, 0)),
                 "delayed": int(counts.get(1, 0)),
-                "imbalance_ratio": round(counts.get(0, 1) / max(counts.get(1, 1), 1), 2)
+                "imbalance_ratio": round(
+                    counts.get(0, 1) / max(counts.get(1, 1), 1), 2
+                ),
             }
         return {}
 
