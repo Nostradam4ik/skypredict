@@ -95,7 +95,7 @@ SkyPredict uses machine learning to predict flight delays with high accuracy.
 
 ### Model Information
 
-- **Algorithm**: Ensemble of XGBoost, LightGBM, and CatBoost
+- **Algorithm**: XGBoost (LightGBM and CatBoost are selectable at training time)
 - **Accuracy**: ~85% classification accuracy
 - **Training Data**: US domestic flights 2018-2023
 

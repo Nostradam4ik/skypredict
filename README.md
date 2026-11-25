@@ -6,19 +6,20 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-SkyPredict is a production-ready machine learning system that predicts flight delays using advanced ensemble models. It combines historical flight data, weather conditions, and airport congestion patterns to provide accurate delay predictions with explainable AI insights.
-
-![Dashboard Preview](docs/images/dashboard-preview.png)
+SkyPredict is a flight-delay prediction pipeline built as a personal project: a classifier says whether a flight will be
+delayed, a regressor estimates by how much, and each prediction comes with a SHAP explanation. **It has only been run on
+synthetic data**: the subject here is the pipeline, not its predictive score.
 
 ## Features
 
-- **High Accuracy Prediction**: 85%+ accuracy using ensemble ML models (XGBoost, LightGBM, CatBoost)
-- **Two-Stage Prediction**: Classification (delayed/on-time) + Regression (delay duration)
-- **Explainable AI**: SHAP-based explanations for every prediction
-- **Real-time API**: FastAPI REST API with Swagger documentation
-- **Weather Integration**: Automatic weather data integration
-- **Class Imbalance Handling**: SMOTE + custom sampling strategies
-- **Production Ready**: Docker, CI/CD, health checks, monitoring
+- **Gradient boosting**: XGBoost, LightGBM or CatBoost, selectable at training time, plus a weighted ensemble option; the
+  committed model is XGBoost
+- **Two-stage prediction**: classification (delayed / on time), then regression (delay duration)
+- **Explainable AI**: SHAP explanations for predictions
+- **REST API**: FastAPI with Swagger documentation
+- **Weather features**: weather severity indicators for both airports
+- **Class imbalance handling**: SMOTE
+- **Tooling**: Docker, a CI pipeline and a health check endpoint
 
 ## Quick Start
 
@@ -31,7 +32,7 @@ SkyPredict is a production-ready machine learning system that predicts flight de
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/skypredict.git
+git clone https://github.com/Nostradam4ik/skypredict.git
 cd skypredict
 
 # Create virtual environment
@@ -182,12 +183,9 @@ We strictly exclude features not available 2 hours before departure:
 
 ## Performance
 
-| Metric | Value |
-|--------|-------|
-| Classification Accuracy | 85.2% |
-| F1 Score | 0.78 |
-| ROC-AUC | 0.89 |
-| MAE (delay minutes) | 18.5 min |
+**No performance figure is claimed.** The data is synthetic. The committed metrics file in `models/` reports 100%
+classification accuracy and an R² of 0.999, which shows that the synthetic labels are far too easy to predict, not that
+the model is good. A meaningful evaluation needs real flight records, which is the next step for this project.
 
 ## Tech Stack
 
